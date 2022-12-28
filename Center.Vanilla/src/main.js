@@ -1,6 +1,9 @@
-let xOffset = 0;
+let firstColumnOffset = 0;
 let columnWidth = 400;
 let rowHeight = 200;
+let animationsPlaying = 0;
+let focusedGridRow = 0;
+let focusedGridColumn = 0;
 
 const visibleColumns = 3;
 const visibleRows = 2;
@@ -137,7 +140,6 @@ let currentYearItems = [
     { path: "Thumbnails/2017/2017-11-27_546bff0a-baf6-4e82-807a-23c14f1eb94e.jpg"},
     { path: "Thumbnails/2017/2017-12-03_43ad4e1d-5f22-49ae-b42a-89c25bc23afe.jpg"},
     { path: "Thumbnails/2017/2017-12-03_348c7f75-81e1-47a1-9589-6611daa0187a.jpg"},
-    { path: "Thumbnails/2017/2017-12-03_d4d1b28a-91c5-47dd-b6b2-a1a30fc99b20.jpg"},
 ];
 
 let loadedMediaItems = [];
@@ -149,7 +151,6 @@ export function init(displayElement) {
     const domRect = displayElement.getBoundingClientRect();
     columnWidth = parseInt(domRect.width / visibleColumns);
     rowHeight = parseInt(domRect.height / visibleRows);
-    xOffset = 0;
 
     for (let c = 0; c < visibleColumns + 1; c++) {
         for(let r = 0; r < visibleRows; r++) {
@@ -161,11 +162,19 @@ export function init(displayElement) {
         }
     }
 
-    document.addEventListener('keydown', function (e) {
+    document.addEventListener('keydown', function (e) {        
         if (e.key === "ArrowRight") {
-            moveRight(e.repeat === false);
+            scroll(e.repeat === false, true);
+        } else if (e.key === "ArrowLeft") {
+            scroll(e.repeat === false, false);
         }
     });
+    // document.addEventListener('keyup', function (e) {
+    //     if (e.key === "ArrowRight") {
+    //         console.log("up");
+    //         //moveRight(e.repeat === false);
+    //     }
+    // });
 
     initCSS(columnWidth);
 }
@@ -181,12 +190,21 @@ function initCSS(columnWidthInPx) {
         to {\
             margin-left: -A_DYNAMIC_VALUEpx;\
         }\
+    }\
+    \
+    @keyframes shiftRightDyn {\
+        from {\
+            margin-left: 0px;\
+        }\
+        to {\
+            margin-left: A_DYNAMIC_VALUEpx;\
+        }\
     }\ ';
     style.innerHTML = keyFrames.replace(/A_DYNAMIC_VALUE/g, "" + columnWidthInPx);
     document.getElementsByTagName('head')[0].appendChild(style);
 }
 
-function createMediaItem(dataIndex, rect, columnIndex) {
+function createMediaItem(dataIndex, rect, gridColumnIndex) {
 
     dataIndex = dataIndex % currentYearItems.length;
 
@@ -194,7 +212,7 @@ function createMediaItem(dataIndex, rect, columnIndex) {
         dataIndex: dataIndex,
         rect: rect,   
         img: document.createElement('img'),
-        columnIndex: columnIndex
+        gridColumnIndex: gridColumnIndex
     };
 
     mediaItem.img.id = "mi_" + dataIndex;
@@ -209,34 +227,53 @@ function createMediaItem(dataIndex, rect, columnIndex) {
     return mediaItem;
 }
 
-let animationsPlaying = 0;
-
-export function moveRight(withAnimation) {
+export function scroll(withAnimation, moveRight) {
 
     if (animationsPlaying > 0)
         return;
-
-    xOffset += columnWidth;
     
-    let xOffsetInColumns = Math.round(xOffset / columnWidth);
-    let newLastVisibleColumn = xOffsetInColumns + visibleColumns;
+    if (moveRight && (firstColumnOffset + visibleColumns) * 2 >= currentYearItems.length)
+        return;
+    
+    if (!moveRight && firstColumnOffset <= 0)
+        return;
 
-    let maxX = 0;
+    shiftLoadedMediaItemsByOneGridColumn(withAnimation, moveRight);
+
+    loadedMediaItems = loadedMediaItems.filter(mediaItem => mediaItem.gridColumnIndex >= -1 && mediaItem.gridColumnIndex <= visibleColumns);
+    
+    if (moveRight) {
+        firstColumnOffset++;
+        appendNewItems(firstColumnOffset + visibleColumns, true);
+    }
+    else {
+        firstColumnOffset--;    
+        appendNewItems(firstColumnOffset - 1, false);
+    }
+}
+
+function shiftLoadedMediaItemsByOneGridColumn(withAnimation, moveRight) {
     loadedMediaItems.forEach(mediaItem => {
-        mediaItem.rect.x -= columnWidth;
-        mediaItem.columnIndex -=1;        
 
-        if (mediaItem.rect.x > maxX)
-            maxX = mediaItem.rect.x;
+        if (moveRight) {
+            mediaItem.rect.x -= columnWidth;
+            mediaItem.gridColumnIndex -= 1;
+        }
+        else {
+            mediaItem.rect.x += columnWidth;
+            mediaItem.gridColumnIndex += 1;
+        }
 
-        if (mediaItem.columnIndex < -1) {
+        if (mediaItem.gridColumnIndex < -1 || mediaItem.gridColumnIndex > visibleColumns) {
             mediaItem.img.remove();
         }
         else {
-
             if (withAnimation) {
-                mediaItem.img.addEventListener('animationend', moveRightCompleted);            
-                mediaItem.img.style.animation = "shiftLeftDyn 0.15s 1";     // Standard syntax    
+                mediaItem.img.addEventListener('animationend', moveAnimationCompleted);
+                if (moveRight)
+                    mediaItem.img.style.animation = "shiftLeftDyn 0.15s 1";
+                else 
+                    mediaItem.img.style.animation = "shiftRightDyn 0.15s 1";
                 animationsPlaying++;
             }
             else {
@@ -244,19 +281,38 @@ export function moveRight(withAnimation) {
             }
         }
     });
+}
 
-    loadedMediaItems = loadedMediaItems.filter(mediaItem => mediaItem.columnIndex >= -1);
-    
-    for(let r = 0; r < visibleRows; r++) {
-        let dataIndex = newLastVisibleColumn * visibleRows + r;            
-        let rect = { x: maxX + columnWidth, y: r * rowHeight, w: columnWidth, h: rowHeight };
-        let mediaItem = createMediaItem(dataIndex, rect, visibleColumns);
+function appendNewItems(newLastVisibleColumn, addRight) {
+    for (let r = 0; r < visibleRows; r++) {
+        let dataIndex = newLastVisibleColumn * visibleRows + r;
+
+        if (dataIndex < 0 || dataIndex >= currentYearItems.length)
+            return;
+
+        let loadingIsRequired = true;
+        loadedMediaItems.forEach(mi => {
+            if (mi.dataIndex == dataIndex) {
+                loadingIsRequired = false;
+                return;
+            }                
+        });
+
+        if (!loadingIsRequired)
+            return;
+
+        let addToGridColumn = -1;
+        if (addRight)
+            addToGridColumn = visibleColumns;
+
+        let rect = { x: addToGridColumn * columnWidth, y: r * rowHeight, w: columnWidth, h: rowHeight };
+        let mediaItem = createMediaItem(dataIndex, rect, addToGridColumn);
         loadedMediaItems.push(mediaItem);
         displayElement.append(mediaItem.img);
     }
 }
 
-function moveRightCompleted(e) {    
+function moveAnimationCompleted(e) {    
     let mediaItem = e.srcElement.mediaItem;    
     mediaItem.img.style.left = mediaItem.rect.x + "px";
     e.srcElement.style.animation = null;
