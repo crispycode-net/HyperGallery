@@ -2,11 +2,10 @@ let firstColumnOffset = 0;
 let columnWidth = 400;
 let rowHeight = 200;
 let animationsPlaying = 0;
-let focusedGridRow = 0;
-let focusedGridColumn = 0;
+let focusedMediaItem = null;
 
-const visibleColumns = 3;
-const visibleRows = 2;
+const visibleColumns = 4;
+const visibleRows = 3;
 
 let currentYearItems = [
     { path: "Thumbnails/2017/2017-12-05_3cfe6c2d-0a26-4fbe-baa4-8c953a969d4e.jpg"},
@@ -156,17 +155,24 @@ export function init(displayElement) {
         for(let r = 0; r < visibleRows; r++) {
             let dataIndex = c * visibleRows + r;
             let rect = { x: c * columnWidth, y: r * rowHeight, w: columnWidth, h: rowHeight };
-            let mediaItem = createMediaItem(dataIndex, rect, c);
+            let mediaItem = createMediaItem(dataIndex, rect, c, r);
             loadedMediaItems.push(mediaItem);
             displayElement.append(mediaItem.img);
         }
     }
 
+    focusMediaItem(loadedMediaItems[0]);
+
     document.addEventListener('keydown', function (e) {        
         if (e.key === "ArrowRight") {
-            scroll(e.repeat === false, true);
+            moveCursorHorizontally(e, true);
         } else if (e.key === "ArrowLeft") {
-            scroll(e.repeat === false, false);
+            moveCursorHorizontally(e, false);
+        }
+        else if (e.key === "ArrowDown") {
+            moveCursorVertically(e, true);
+        } else if (e.key === "ArrowUp") {
+            moveCursorVertically(e, false);
         }
     });
     // document.addEventListener('keyup', function (e) {
@@ -204,7 +210,7 @@ function initCSS(columnWidthInPx) {
     document.getElementsByTagName('head')[0].appendChild(style);
 }
 
-function createMediaItem(dataIndex, rect, gridColumnIndex) {
+function createMediaItem(dataIndex, rect, gridColumnIndex, gridRowIndex) {
 
     dataIndex = dataIndex % currentYearItems.length;
 
@@ -212,7 +218,8 @@ function createMediaItem(dataIndex, rect, gridColumnIndex) {
         dataIndex: dataIndex,
         rect: rect,   
         img: document.createElement('img'),
-        gridColumnIndex: gridColumnIndex
+        gridColumnIndex: gridColumnIndex,
+        gridRowIndex: gridRowIndex
     };
 
     mediaItem.img.id = "mi_" + dataIndex;
@@ -227,11 +234,50 @@ function createMediaItem(dataIndex, rect, gridColumnIndex) {
     return mediaItem;
 }
 
-export function scroll(withAnimation, moveRight) {
+function focusMediaItem(mediaItem) {
+
+    if (focusedMediaItem != null)
+        focusedMediaItem.img.classList.remove("focused-media-item");
+
+    mediaItem.img.classList.add("focused-media-item");
+    focusedMediaItem = mediaItem;
+}
+
+function moveCursorHorizontally(e, moveRight) {
 
     if (animationsPlaying > 0)
         return;
+
+    if (moveRight) {
+        if (focusedMediaItem.gridColumnIndex < visibleColumns - 1) {
+            focusMediaItemByOffset(visibleRows);
+            return;
+        }
+    }
+    else {
+        if (focusedMediaItem.gridColumnIndex > 0) {
+            focusMediaItemByOffset(-visibleRows);
+            return;
+        }
+    }
+
+    scroll(e.repeat === false, moveRight);
     
+    focusMediaItemByOffset(moveRight ? visibleRows : -visibleRows);
+}
+
+function moveCursorVertically(e, moveDown) {    
+    focusMediaItemByOffset(moveDown ? 1 : -1);
+}
+
+function focusMediaItemByOffset(offset) {
+    let rightNeighbor = loadedMediaItems.find(mi => mi.dataIndex == focusedMediaItem.dataIndex + offset);
+    if (rightNeighbor)
+        focusMediaItem(rightNeighbor);
+}
+
+function scroll(withAnimation, moveRight) {
+
     if (moveRight && (firstColumnOffset + visibleColumns) * 2 >= currentYearItems.length)
         return;
     
@@ -306,7 +352,7 @@ function appendNewItems(newLastVisibleColumn, addRight) {
             addToGridColumn = visibleColumns;
 
         let rect = { x: addToGridColumn * columnWidth, y: r * rowHeight, w: columnWidth, h: rowHeight };
-        let mediaItem = createMediaItem(dataIndex, rect, addToGridColumn);
+        let mediaItem = createMediaItem(dataIndex, rect, addToGridColumn, r);
         loadedMediaItems.push(mediaItem);
         displayElement.append(mediaItem.img);
     }

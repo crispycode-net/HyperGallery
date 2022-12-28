@@ -1,5 +1,28 @@
-.mediaCell {
-    border: 1px solid gray;
+body, html {
+    margin: 0px;
+    padding: 0px;
 }
 
+h1 {
+    font-family: 'Roboto', sans-serif;
+    color: white;
+    font-size: 48px;
+    margin-bottom: 0px;
+}
 
+h3 {
+    font-family: 'Roboto', sans-serif;
+    color: white;
+    font-size: 20px;
+    margin-top: 6px;
+}
+
+.gradient {
+    background-color: #21D4FD;
+    background-image: linear-gradient(347deg, #21D4FD 0%, #B721FF 100%);
+}
+
+.focused-media-item {
+    border: 20px solid #ffffff96;
+    box-sizing: border-box;
+}
