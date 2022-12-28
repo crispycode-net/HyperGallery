@@ -9,7 +9,29 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MediaSchnaff.Shared", "Medi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MediaSchnaff.CLI", "MediaSchnaff.CLI\MediaSchnaff.CLI.csproj", "{36193D05-9DD4-41B5-8D66-CE2170E1826D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MediaSchnaff.Center", "MediaSchnaff.Center\MediaSchnaff.Center.csproj", "{822A1743-0F5D-4FA2-B1FD-00A47D2D0F90}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Center", "Center\Center.csproj", "{2478213D-75A7-4AAE-8483-2EC0244AF189}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Center.MAUI", "Center.MAUI\Center.MAUI.csproj", "{4E4017C3-BA3F-40A6-9BA6-8B2AF7183595}"
+EndProject
+Project("{E24C65DC-7377-472B-9ABA-BC803B73C61A}") = "Center.Vanilla", "Center.Vanilla\", "{5CF95FD9-9C97-4E33-8BFE-A45908FA0E6F}"
+	ProjectSection(WebsiteProperties) = preProject
+		TargetFrameworkMoniker = ".NETFramework,Version%3Dv4.0"
+		Debug.AspNetCompiler.VirtualPath = "/localhost_52607"
+		Debug.AspNetCompiler.PhysicalPath = "Center.Vanilla\"
+		Debug.AspNetCompiler.TargetPath = "PrecompiledWeb\localhost_52607\"
+		Debug.AspNetCompiler.Updateable = "true"
+		Debug.AspNetCompiler.ForceOverwrite = "true"
+		Debug.AspNetCompiler.FixedNames = "false"
+		Debug.AspNetCompiler.Debug = "True"
+		Release.AspNetCompiler.VirtualPath = "/localhost_52607"
+		Release.AspNetCompiler.PhysicalPath = "Center.Vanilla\"
+		Release.AspNetCompiler.TargetPath = "PrecompiledWeb\localhost_52607\"
+		Release.AspNetCompiler.Updateable = "true"
+		Release.AspNetCompiler.ForceOverwrite = "true"
+		Release.AspNetCompiler.FixedNames = "false"
+		Release.AspNetCompiler.Debug = "False"
+		VWDPort = "52607"
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -29,10 +51,22 @@ Global
 		{36193D05-9DD4-41B5-8D66-CE2170E1826D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36193D05-9DD4-41B5-8D66-CE2170E1826D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36193D05-9DD4-41B5-8D66-CE2170E1826D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{822A1743-0F5D-4FA2-B1FD-00A47D2D0F90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{822A1743-0F5D-4FA2-B1FD-00A47D2D0F90}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{822A1743-0F5D-4FA2-B1FD-00A47D2D0F90}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{822A1743-0F5D-4FA2-B1FD-00A47D2D0F90}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2478213D-75A7-4AAE-8483-2EC0244AF189}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2478213D-75A7-4AAE-8483-2EC0244AF189}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2478213D-75A7-4AAE-8483-2EC0244AF189}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{2478213D-75A7-4AAE-8483-2EC0244AF189}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2478213D-75A7-4AAE-8483-2EC0244AF189}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2478213D-75A7-4AAE-8483-2EC0244AF189}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{4E4017C3-BA3F-40A6-9BA6-8B2AF7183595}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E4017C3-BA3F-40A6-9BA6-8B2AF7183595}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E4017C3-BA3F-40A6-9BA6-8B2AF7183595}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{4E4017C3-BA3F-40A6-9BA6-8B2AF7183595}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E4017C3-BA3F-40A6-9BA6-8B2AF7183595}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E4017C3-BA3F-40A6-9BA6-8B2AF7183595}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{5CF95FD9-9C97-4E33-8BFE-A45908FA0E6F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CF95FD9-9C97-4E33-8BFE-A45908FA0E6F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5CF95FD9-9C97-4E33-8BFE-A45908FA0E6F}.Release|Any CPU.ActiveCfg = Debug|Any CPU
+		{5CF95FD9-9C97-4E33-8BFE-A45908FA0E6F}.Release|Any CPU.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

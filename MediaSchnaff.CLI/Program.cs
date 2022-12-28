@@ -63,7 +63,7 @@ namespace MediaSchnaff.CLI
                     // Add services here...
                     services.AddTransient<IDirectories, Directories>();
                     services.AddTransient<IDiscovery, Discovery>();
-                    services.AddTransient<MainContext>();
+                    services.AddDbContext<MainContext>();
 
                 })
                 .UseSerilog() // Add Serilog

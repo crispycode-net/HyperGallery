@@ -1,0 +1,22 @@
+﻿@page "/index"
+
+
+<div id="yearrow" tabindex="0" style="display: flex;" @onkeypress="YearRowKeyDown">
+    @foreach (var year in years)
+    {
+        <h1 style="margin: 0px 12px;">@year</h1>
+    }
+</div>
+
+<div id="imagegrid" tabindex="1" style="display: flex; flex-wrap: wrap; flex-direction: column; height: calc(100vH - 105px); overflow-x: scroll;" @onkeypress="ImageRowKeyDown">
+
+    @{
+        int imgNum = 0;
+        foreach (var context in images)
+        {
+                    <div style="margin: 12px; background-color:deeppink; width: 639px; height: 360px;">
+                        <img id="@($"img_{(imgNum++)}")" style="width: 639px; height: 360px; object-fit: cover;" src="@context" />
+                    </div>
+        }
+    }
+</div>

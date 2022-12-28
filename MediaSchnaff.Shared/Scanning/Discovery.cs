@@ -27,6 +27,7 @@ namespace MediaSchnaff.Shared.Scanning
         private readonly IDirectories directories;
         private readonly HashSet<string> ignoreExtensions;
         public static DateTime PlausibMinDate = new DateTime(2003, 1, 1);
+        public static int FixedThumbnailSize = 645;
         private readonly string exePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "Where am I?";
 
         public Discovery(ILogger<Discovery> logger, MainContext mainContext, IDirectories directories)
@@ -57,8 +58,13 @@ namespace MediaSchnaff.Shared.Scanning
                 var allDbFileSourcePaths = mainContext.Files?.Select(f => f.SourcePath).ToDictionary(f => f);
                 var allDbFileSourcePathsWithErrors = mainContext.ScanErrors?.Select(f => f.SourcePath).ToDictionary(f => f);
 
+                int index = 0;  
+
                 foreach (var source in allFiles)
                 {
+                    logger.LogInformation($"Processing file {index} of {allFiles.Length}: {source}");
+                    index++;
+
                     if (allDbFileSourcePaths?.ContainsKey(source) == true)
                         continue;
                     if (allDbFileSourcePathsWithErrors?.ContainsKey(source) == true)
@@ -127,7 +133,7 @@ namespace MediaSchnaff.Shared.Scanning
 
                 IImageFormat format;
                 var image = Image.Load(File.ReadAllBytes(originalImagePath), out format);
-                image.Mutate(x => x.Resize(SizeToHeight(image.Size(), 720)));
+                image.Mutate(x => x.Resize(SizeToHeight(image.Size(), FixedThumbnailSize)));
                 image.SaveAsJpeg(output, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder());
 
                 return null;

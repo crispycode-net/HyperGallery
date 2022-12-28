@@ -1,0 +1,15 @@
+﻿<div style="height: calc(100vH - 64px); overflow-x:scroll">
+    <Virtualize Items="@MediaColumns" Context="mediaColumn">
+        <div style="height: 100%; width: 25%; display:flex; flex-direction:column;">
+            <div>Year</div>
+            <div>Month</div>
+            <div>Image Row 1</div>
+            <div>Image Row 2</div>
+        </div>
+    </Virtualize>
+</div>
+
+@if (NavigationMode == NavigationModes.MediaItem)
+{
+
+}

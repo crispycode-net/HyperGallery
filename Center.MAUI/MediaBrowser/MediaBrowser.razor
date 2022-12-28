@@ -1,0 +1,217 @@
+﻿@using MediaSchnaff.Shared.DBAccess;
+@using MediaSchnaff.Shared.LocalData;
+
+@if (InitComplete)
+{
+@*    <div style="height: 100vH; width: @(GridWidth)px; 
+        display: grid; grid-template-columns: @(GridFractions); 
+        margin-left: -@(OffscreenWidth)px;
+        overflow: hidden"
+        @onkeydown="OnGridKeyDown" @ref=mediaGridElement tabindex="0">
+        @foreach (var mc in RenderedMediaColumns)
+        {
+            <div id="@("idx1-" + mc.DataColumnIndex)" style="grid-column-start: @mc.GridColumnIndex; height: 100%; min-width: @(ColumnWidth)px; display:grid; grid-template-rows: 40px 40px 1fr 1fr; grid-template-columns: 1fr;">
+                <div id="@("idx2-" + mc.DataColumnIndex)" style="grid-row-start: 1;">@mc.DisplayYear</div>
+                <div id="@("idx3-" + mc.DataColumnIndex)" style="grid-row-start: 2;">@mc.DisplayMonth</div>
+                <div id="@("idx4-" + mc.DataColumnIndex)" style="grid-row-start: 3;">
+                    <img id="@("idx5-" + mc.DataColumnIndex)" src="@mc.ItemInRow_1?.ThumnailImage" />
+                </div>
+                <div id="@("idx6-" + mc.DataColumnIndex)" style="grid-row-start: 4;">@mc.DataColumnIndex</div>
+            </div>
+        }
+    </div>*@
+
+    <div style="height: 100vH;
+        display: grid; grid-auto-flow: column;
+        overflow-y: scroll"
+     @onkeydown="OnGridKeyDown" @ref=mediaGridElement tabindex="0">
+        @foreach (var mc in MediaColumns)
+        {
+            <div style="height: 100%; min-width: @(ColumnWidth)px; display:grid; grid-template-rows: 40px 40px @(ImageRowHeight)px @(ImageRowHeight)px; grid-template-columns: 1fr;">
+                <div style="grid-row-start: 1;">@mc.DisplayYear</div>
+                <div style="grid-row-start: 2;">@mc.DisplayMonth</div>
+                <div style="grid-row-start: 3;">
+                    <img src="@mc.ItemInRow_1?.ThumnailImage" width="@(ColumnWidth)" height="@(ImageRowHeight)" loading=lazy />
+                </div>
+                <div style="grid-row-start: 4;">
+                    <img src="@mc.ItemInRow_2?.ThumnailImage" width="@(ColumnWidth)" height="@(ImageRowHeight)" loading=lazy />
+                </div>
+            </div>
+        }
+    </div>
+
+}
+
+@if (NavigationMode == NavigationModes.MediaItem)
+{
+
+}
+
+@code {
+    [Inject] IDirectories directories { get; set; }
+    [Inject] MainContext mainContext { get; set; }
+    [Inject] IJSRuntime JsRuntime { get; set; }
+
+    private enum NavigationModes { Year, Month, MediaItem }
+    private NavigationModes NavigationMode { get; set; } = NavigationModes.MediaItem;
+    private List<MediaColumn> MediaColumns { get; set; } = new List<MediaColumn>();
+
+    private int OnScreenColumnCount { get; set; } = 4;
+    private int OffscreenColumnCount { get; set; } = 4;
+    private int OffscreenWidth { get; set; } = 4;
+    private string GridFractions { get; set; } = "1fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr";
+    private int ColumnWidth { get; set; }
+    private int ImageRowHeight { get; set; }
+    private int GridWidth { get; set; }
+    private List<MediaColumn> RenderedMediaColumns { get; set; } = new List<MediaColumn>();
+    private bool InitComplete { get; set; }
+    private ElementReference mediaGridElement;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var dimension = await JsRuntime.InvokeAsync<WindowDimension>("getWindowDimensions");
+
+        ImageRowHeight = (dimension.Height - 80) / 2;
+        ColumnWidth = dimension.Width / OnScreenColumnCount;
+        OffscreenWidth = OffscreenColumnCount / 2 * ColumnWidth;
+        GridWidth = ColumnWidth * OnScreenColumnCount + OffscreenWidth;
+
+        var years = new List<int> { 2010,2011,2012,2013,2014,2015,2016, 2017, 2018, 2019, 2020, 2021, 2022 };
+
+        MediaColumns = GetMediaColumnsForYear(2010);
+        RenderedMediaColumns = GetRenderColumns(MediaColumns);
+
+        InitComplete = true;
+
+        await base.OnInitializedAsync();
+    }
+
+    private List<MediaColumn> GetRenderColumns(List<MediaColumn> MediaColumns)
+    {
+        // Add two empty dummy columns to fill the left two offscreen grid columns
+        var RenderedMediaColumns = new List<MediaColumn>(OnScreenColumnCount + OffscreenColumnCount);
+        for (int i = 1; i <= OffscreenColumnCount / 2; i++)
+        {
+            RenderedMediaColumns.Add(new MediaColumn { GridColumnIndex = i });
+        }        
+
+        var columnsWithMedia = MediaColumns.Take(OnScreenColumnCount + OffscreenColumnCount / 2).ToList();
+        int gridColumnIndex = OffscreenColumnCount / 2 + 1;
+        int dataColumnIndex = 0;
+        foreach (var mc in columnsWithMedia)
+        {
+            mc.GridColumnIndex = gridColumnIndex;
+            mc.DataColumnIndex = dataColumnIndex;
+            mc.IsFirstVisibleColumn = gridColumnIndex == (OffscreenColumnCount / 2) + 1;
+
+            RenderedMediaColumns.Add(mc);
+            gridColumnIndex++;
+            dataColumnIndex++;
+        }
+
+        return RenderedMediaColumns;
+    }
+
+    private void ScrollColumns(int offset)
+    {
+        if (RenderedMediaColumns.Count > 2)
+        {
+            var lastColumn = RenderedMediaColumns[RenderedMediaColumns.Count - 1];
+            if (lastColumn?.DataColumnIndex == null)
+                return;
+
+            int lastVisibleColumnIndex = OnScreenColumnCount + OffscreenColumnCount / 2;
+            if (lastColumn.GridColumnIndex <= lastVisibleColumnIndex)
+                return;
+
+            int lastDataIndex = lastColumn.DataColumnIndex.Value;
+            int lastGridIndex = lastColumn.GridColumnIndex.Value;            
+
+            RenderedMediaColumns.RemoveAt(0);
+
+            foreach (var mc in RenderedMediaColumns)
+            {
+                mc.GridColumnIndex-=offset;
+                mc.IsFirstVisibleColumn = mc.GridColumnIndex == (OffscreenColumnCount / 2) + 1;
+            }
+
+            lastGridIndex--;
+
+            if (lastDataIndex + 1 >= MediaColumns.Count)
+            {
+                // Bis zu zwei dummy columns anhängen, damit die echten Spalten in den Onscreenbereich geschoben werden können
+            }
+            else
+            {
+                var addMc = MediaColumns[lastDataIndex + 1];
+                addMc.GridColumnIndex = lastGridIndex + 1;
+                RenderedMediaColumns.Add(addMc);
+            }
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await mediaGridElement.FocusAsync();            
+        }
+    }
+
+    private void OnGridKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Code == "ArrowRight")
+            ScrollColumns(1);
+    }
+
+    public class WindowDimension
+    {
+        public int Width { get; set; }
+        public int Height { get; set; }
+    }
+
+    private List<MediaColumn> GetMediaColumnsForYear(int year)
+    {
+        var mediaFiles = mainContext.Files
+            .Where(f => f.BestGuessYear == year)
+            .OrderBy(f => f.BestGuess)
+            .ToList();
+
+        var columns = new List<MediaColumn>();
+        //var yearDir = Path.Combine(directories.ThumbnailDir, year.ToString());
+        //var yearFiles = Directory.GetFiles(@"C:\Users\aleba\source\repos\MediaSchnaff\Center\wwwroot\Thumbnails\2010");
+
+        MediaColumn addColumn = null;
+        foreach (var file in mediaFiles)
+        {
+            MediaItem item = new MediaItem();
+            item.ShortName = file.ThumbGuid;
+
+            var absFile = Path.Combine(@"C:\Users\aleba\source\repos\MediaSchnaff\Center\wwwroot\Thumbnails\2010", $"{file.BestGuess.ToString("yyyy-MM-dd")}_{file.ThumbGuid}.jpg");
+            var relFile = Path.GetRelativePath(@"C:\Users\aleba\source\repos\MediaSchnaff\Center\wwwroot", absFile);
+            item.ThumnailImage = relFile;
+
+            if (addColumn == null)
+            {
+                addColumn = new MediaColumn();
+                addColumn.Year = year;
+                addColumn.Month = file.BestGuessMonth;
+                addColumn.MonthName = file.BestGuessMonth.ToString();
+                addColumn.DataColumnIndex = columns.Count;
+                addColumn.ItemInRow_1 = item;
+                columns.Add(addColumn);
+            }
+            else
+            {
+                addColumn.ItemInRow_2 = item;
+                addColumn = null;
+            }
+
+            
+            //var relFile = Path.GetRelativePath(@"C:\Users\aleba\source\repos\MediaSchnaff\Center\wwwroot", file);
+            //images.Add(relFile);
+        }
+
+        return columns;
+    }
+}
