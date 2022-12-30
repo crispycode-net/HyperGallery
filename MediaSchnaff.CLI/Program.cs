@@ -1,15 +1,13 @@
-﻿using MediaSchnaff.Shared;
-using MediaSchnaff.Shared.DBAccess;
+﻿using MediaSchnaff.Shared.DBAccess;
 using MediaSchnaff.Shared.LocalData;
 using MediaSchnaff.Shared.Scanning;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
-using System;
-using System.Collections.Generic;
+using SixLabors.ImageSharp;
 using System.Diagnostics;
-using System.Linq;
 
 namespace MediaSchnaff.CLI
 {
@@ -22,7 +20,6 @@ namespace MediaSchnaff.CLI
             var tokenSource = new CancellationTokenSource();
             var token = tokenSource.Token;
 
-            //var discovery = ActivatorUtilities.CreateInstance<IDiscovery>(host.Services);
             var discovery = host.Services.GetRequiredService<IDiscovery>();
 
             discovery.Scan(@"V:\Upload", true, token);
@@ -46,10 +43,11 @@ namespace MediaSchnaff.CLI
         {
             var builder = new ConfigurationBuilder();
             BuildConfig(builder);
+            var configRoot = builder.Build();
 
             // Specifying the configuration for serilog
             Log.Logger = new LoggerConfiguration() // initiate the logger configuration
-                            .ReadFrom.Configuration(builder.Build()) // connect serilog to our configuration folder
+                            .ReadFrom.Configuration(configRoot) // connect serilog to our configuration folder
                             .Enrich.FromLogContext() //Adds more information to our logs from built in Serilog 
                             .WriteTo.Console() // decide where the logs are going to be shown
                             .CreateLogger(); //initialise the logger
@@ -60,7 +58,7 @@ namespace MediaSchnaff.CLI
                 .CreateDefaultBuilder() // Initialising the Host 
                 .ConfigureServices((context, services) => { // Adding the DI container for configuration
 
-                    // Add services here...
+                    services.Configure<ApplicationSettings>(configRoot.GetSection("ApplicationSettings"));
                     services.AddTransient<IDirectories, Directories>();
                     services.AddTransient<IDiscovery, Discovery>();
                     services.AddDbContext<MainContext>();
@@ -68,6 +66,12 @@ namespace MediaSchnaff.CLI
                 })
                 .UseSerilog() // Add Serilog
                 .Build(); // Build the Host
+
+            using (var scope = host.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<MainContext>();
+                db.Database.Migrate();
+            }
 
             return host;
         }

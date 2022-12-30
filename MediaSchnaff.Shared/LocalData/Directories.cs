@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -15,6 +17,15 @@ namespace MediaSchnaff.Shared.LocalData
 
     public class Directories : IDirectories
     {
+        private IOptions<ApplicationSettings> Settings;
+
+        public Directories(IOptions<ApplicationSettings> settings)
+        {
+            this.Settings = settings;
+            if (Settings?.Value?.ThumbnailDir == null)
+                throw new Exception("No ThumbnailDir configured in application settings");
+        }
+
         public string StorageDir
         {
             get
@@ -34,9 +45,7 @@ namespace MediaSchnaff.Shared.LocalData
         {
             get
             {
-                var dir = Path.Combine(
-                    StorageDir,
-                    "Thumbnails");
+                var dir = Settings.Value.ThumbnailDir!;
 
                 if (!Directory.Exists(dir))
                     Directory.CreateDirectory(dir);

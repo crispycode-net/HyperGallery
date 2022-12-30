@@ -3,6 +3,7 @@ using MediaSchnaff.Shared.DBModels;
 using MediaSchnaff.Shared.LocalData;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
@@ -27,7 +28,15 @@ namespace MediaSchnaff.Shared.Scanning
         private readonly IDirectories directories;
         private readonly HashSet<string> ignoreExtensions;
         public static DateTime PlausibMinDate = new DateTime(2003, 1, 1);
-        public static int FixedThumbnailSize = 645;
+
+        /// <summary>
+        /// Optimal thumb size is 640 x 430 for UHD @150% scaling
+        /// UHD @ 100% = 3840 x 2160
+        /// UHD @ 150% = 2560 x 1440
+        /// Abzüglich dem oberend Rand von 150 Pixel bleiben für die Thumbs 2560 x 1290
+        /// Bei 3 Reihen und 4 Spalten hat jedes Thumbnail einen Rahmen von 640 x 430
+        /// </summary>
+        public static Size FixedThumbnailFrameSize = new Size(640, 430);
         private readonly string exePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "Where am I?";
 
         public Discovery(ILogger<Discovery> logger, MainContext mainContext, IDirectories directories)
@@ -133,7 +142,7 @@ namespace MediaSchnaff.Shared.Scanning
 
                 IImageFormat format;
                 var image = Image.Load(File.ReadAllBytes(originalImagePath), out format);
-                image.Mutate(x => x.Resize(SizeToHeight(image.Size(), FixedThumbnailSize)));
+                image.Mutate(x => x.Resize(CalculateAspectRatioFit(image.Size(), FixedThumbnailFrameSize)));
                 image.SaveAsJpeg(output, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder());
 
                 return null;
@@ -145,11 +154,17 @@ namespace MediaSchnaff.Shared.Scanning
             }
         }
 
-        private static Size SizeToHeight(Size image, int fixedHeight)
+        //private static Size SizeToHeight(Size image, int fixedHeight)
+        //{
+        //    var scaleFactor = (double)fixedHeight / (double)image.Height;            
+        //    Size result = new Size((int)(image.Width * scaleFactor), fixedHeight);
+        //    return result;
+        //}
+
+        private static Size CalculateAspectRatioFit(Size srcSize, Size maxSize)
         {
-            var scaleFactor = (double)fixedHeight / (double)image.Height;            
-            Size result = new Size((int)(image.Width * scaleFactor), fixedHeight);
-            return result;
+            var ratio = Math.Min((double)maxSize.Width / (double)srcSize.Width, (double)maxSize.Height / (double)srcSize.Height);
+            return new Size((int)(srcSize.Width * ratio), (int)(srcSize.Height * ratio));
         }
 
         private MediaFileOrError GetFileInfo(string path, string mfFileExt)
