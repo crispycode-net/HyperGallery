@@ -1,21 +1,16 @@
 ﻿export class timeRibbon {
-    hasFocus = false;
     yearContainer = null;
     yearItems = [];
-    animationsPlaying = 0;
     focusedYearItemIndex = null;
-    yearSelectedCallback = null;
+    initialFocusedYearItemIndex = null;
 
-    constructor(yearContainerId, yearSelectedCallback) {
-        this.yearContainer = document.getElementById(yearContainerId);
-        this.yearSelectedCallback = yearSelectedCallback;
+    constructor(yearContainer) {
+        this.yearContainer = yearContainer;
     }
 
     async initAsync() {
         let yearRequest = await fetch("/api/MediaItem/Years");
         let years = await yearRequest.json();
-
-        this.hasFocus = true;
 
         this.yearItems = [];
         years.forEach(y => {
@@ -25,30 +20,9 @@
         });
 
         this.focusedYearItemIndex = 0;
-        this.focusYearItem(this.focusedYearItemIndex);        
-
-        let yearRibbon = this;
-        document.addEventListener('keydown', function (e) {
-            if (e.key === "ArrowRight") {
-                yearRibbon.moveCursorHorizontally(e, true);
-            } else if (e.key === "ArrowLeft") {
-                yearRibbon.moveCursorHorizontally(e, false);
-            } else if (e.key === "Enter") {
-                yearRibbon.yearSelectedCallback(yearRibbon.yearItems[yearRibbon.focusedYearItemIndex].year);
-                yearRibbon.unfocusRibbon();
-            }
-        });
+        this.focusYearItem(this.focusedYearItemIndex);
 
         return this.yearItems[0].year;
-    }
-
-    unfocusRibbon() {
-        this.hasFocus = false;
-        this.yearItems.forEach(yi => {
-            if (yi != this.yearItems[this.focusedYearItemIndex]) {
-                yi.element.classList.add("hidden");
-            }
-        });
     }
 
     createYearItem(year) {
@@ -61,21 +35,35 @@
         return yearItem;
     }
 
+    activateView() {
+        this.initialFocusedYearItemIndex = this.focusedYearItemIndex;
+        this.yearItems.forEach(yi => {
+            if (yi != this.yearItems[this.focusedYearItemIndex]) {
+                yi.element.classList.remove("hidden");
+            }
+        });
+    } 
+
+    deactivateView() {
+        this.yearItems.forEach(yi => {
+            if (yi != this.yearItems[this.focusedYearItemIndex]) {
+                yi.element.classList.add("hidden");
+            }
+        });
+    }
+
     focusYearItem(yearItemIndex) {
         if (this.focusedYearItemIndex != null)
             this.yearItems[this.focusedYearItemIndex].element.classList.remove("focused");
 
         this.focusedYearItemIndex = yearItemIndex;
-        this.yearItems[this.focusedYearItemIndex].element.classList.add("focused");        
+
+        const element = this.yearItems[this.focusedYearItemIndex].element;
+        element.classList.add("focused");    
+        element.scrollIntoView();    
     }
 
-    moveCursorHorizontally(e, moveRight) {
-        if (!this.hasFocus)
-            return;
-
-        if (this.animationsPlaying > 0)
-            return;
-
+    moveCursorHorizontally(moveRight) {
         if (this.focusedYearItemIndex === null)
             return;
 
@@ -86,5 +74,9 @@
             return;        
 
         this.focusYearItem(moveRight ? this.focusedYearItemIndex + 1 : this.focusedYearItemIndex - 1);
+    }
+
+    getFocusedYear() {
+        return this.yearItems[this.focusedYearItemIndex].year;
     }
 }

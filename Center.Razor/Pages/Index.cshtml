@@ -5,18 +5,16 @@
 }
 
 <div style="grid-row: 1; padding-left: 22px;">
-    <div id="yearContainer" style="display: flex;"></div>
+    <div id="yearContainer" style="display: flex; width: calc(100vW - 40px); overflow: hidden;"></div>
     <h3>Januar</h3>
 </div>
 
 <div id="displayElement" style="grid-row: 2; width: 100%; height: 100%; position: relative;"></div>
 
 <script type="module">
-    import { imageWall } from './js/image-wall.js';
-    import { timeRibbon } from './js/time-ribbon.js';
+    import { mediaSchnaff } from './js/media-schnaff.js';    
 
-    let iw = new imageWall("displayElement");
-    let tr = new timeRibbon("yearContainerId", iw.yearSelectedCallback.bind(iw));
-
-    let focusedYear = await tr.initAsync();    
+    const ms = new mediaSchnaff("yearContainerId", "displayElement")
+    await ms.initAsync();
+    
 </script>

@@ -1,5 +1,4 @@
 ﻿export class imageWall {
-    hasFocus = false;
     displayElement = null;
     firstColumnOffset = 0;
     columnWidth = 400;
@@ -10,17 +9,24 @@
     visibleRows = 3;
     currentYearItems = [];
     loadedMediaItems = [];
+    initialInitDone = false;
+    fullScreenView = null;    
 
-    constructor(displayElementId) {
-        this.displayElement = document.getElementById(displayElementId);
+    constructor(displayElement) {
+        this.displayElement = displayElement;
     }
 
     async init(currentYear) {        
 
+        this.loadedMediaItems = [];
+        this.firstColumnOffset = 0;
+        this.animationsPlaying = 0;
+        while (this.displayElement.firstChild) {
+            this.displayElement.removeChild(this.displayElement.lastChild);
+        }
+
         let yearRequest = await fetch("/api/Years/" + currentYear);
         this.currentYearItems = await yearRequest.json();
-
-        this.displayElement.style.overflow = "hidden";
 
         const domRect = this.displayElement.getBoundingClientRect();
         this.columnWidth = parseInt(domRect.width / this.visibleColumns);
@@ -40,22 +46,17 @@
 
         this.initCSS(this.columnWidth);
 
-        let imageWall = this;
-        document.addEventListener('keydown', function (e) {
-            if (e.key === "ArrowRight") {
-                imageWall.moveCursorHorizontally(e, true);
-            } else if (e.key === "ArrowLeft") {
-                imageWall.moveCursorHorizontally(e, false);
-            }
-            else if (e.key === "ArrowDown") {
-                imageWall.moveCursorVertically(e, true);
-            } else if (e.key === "ArrowUp") {
-                imageWall.moveCursorVertically(e, false);
-            }
-        });
+        if (this.initialInitDone === false) {
+            this.displayElement.style.overflow = "hidden";
+        }
+
+        this.initialInitDone = true;
     }
 
     initCSS(columnWidthInPx) {
+        var style = document.getElementById("keyframe-styles");
+        if (style) 
+            style.remove();
 
         var style = document.createElement('style');
         var keyFrames = '\
@@ -76,19 +77,20 @@
             margin-left: A_DYNAMIC_VALUEpx;\
         }\
     }\ ';
+        style.id = "keyframe-styles";
         style.innerHTML = keyFrames.replace(/A_DYNAMIC_VALUE/g, "" + columnWidthInPx);
         document.getElementsByTagName('head')[0].appendChild(style);
     }
 
     createMediaItem(dataIndex, rect, gridColumnIndex, gridRowIndex) {
-        dataIndex = dataIndex % this.currentYearItems.length;
-
         let mediaItem = {
             dataIndex: dataIndex,
             rect: rect,
             img: document.createElement('img'),
             gridColumnIndex: gridColumnIndex,
-            gridRowIndex: gridRowIndex
+            gridRowIndex: gridRowIndex,
+            kind: this.currentYearItems[dataIndex].kind,
+            id: this.currentYearItems[dataIndex].id
         };
 
         mediaItem.img.id = "mi_" + dataIndex;
@@ -98,7 +100,12 @@
         mediaItem.img.style.top = rect.y + "px";
         mediaItem.img.style.width = rect.w + "px";
         mediaItem.img.style.height = rect.h + "px";
+        mediaItem.img.style.objectFit = "cover";
         mediaItem.img.mediaItem = mediaItem;
+
+        if (mediaItem.kind === "video") {
+            mediaItem.img.style.border = "1px solid white";
+        }
 
         return mediaItem;
     }
@@ -112,7 +119,7 @@
     }
 
     moveCursorHorizontally(e, moveRight) {
-        if (!this.hasFocus)
+        if (this.fullScreenView != null)
             return;
 
         if (this.animationsPlaying > 0)
@@ -136,11 +143,16 @@
         this.focusMediaItemByOffset(moveRight ? this.visibleRows : -this.visibleRows);
     }
 
+    /** Returns true if we're leaving the navigation area of the image wall */
     moveCursorVertically(e, moveDown) {
-        if (!this.hasFocus)
-            return;
+        if (this.fullScreenView != null)
+            return false;
+
+        if (!moveDown && this.focusedMediaItem.gridRowIndex == 0)         
+            return true;
 
         this.focusMediaItemByOffset(moveDown ? 1 : -1);
+        return false;
     }
 
     focusMediaItemByOffset(offset) {
@@ -239,12 +251,49 @@
         this.animationsPlaying--;
     }
 
-    setFocus(hasFocus) {        
-        this.hasFocus = hasFocus;        
+    createFullScreenView(focusedMediaItem) {
+
+        let fullScreenView = document.createElement('div');
+        fullScreenView.style.position = "absolute";
+        fullScreenView.style.left = "0px";
+        fullScreenView.style.top = "0px";
+        fullScreenView.style.width = "calc(100vW - 0px)";
+        fullScreenView.style.height = "calc(100vH - 0px)";
+        fullScreenView.style.backgroundColor = "black";
+        fullScreenView.style.overflow = "hidden";
+
+        if (focusedMediaItem.kind === "video") {
+            let video = document.createElement("video");
+            video.style.width = "100%";
+            video.style.height = "100%";
+            video.src = "/api/Video/" + focusedMediaItem.id;
+            video.autoplay = true;
+            fullScreenView.appendChild(video);
+        } else {
+            let img = document.createElement("img");
+            img.style.width = "100%";
+            img.style.height = "100%";
+            img.style.objectFit = "contain";
+            img.src = "/api/Photo/" + focusedMediaItem.id;
+            fullScreenView.appendChild(img);
+        }
+
+        return fullScreenView;
     }
 
-    yearSelectedCallback(year) {
-        this.setFocus(true);
-        this.init(year);
+    handleEnter() {
+        if (this.fullScreenView != null)
+            return;
+
+        this.fullScreenView = this.createFullScreenView(this.focusedMediaItem);
+        document.body.appendChild(this.fullScreenView);
+    }
+
+    handleEscape() {
+        if (this.fullScreenView == null)
+            return;
+        
+        this.fullScreenView.remove();
+        this.fullScreenView = null;
     }
 }
