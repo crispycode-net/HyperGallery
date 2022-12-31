@@ -65,6 +65,14 @@ namespace MediaSchnaff.Shared.DBAccess
             modelBuilder.Entity<MediaFile>()
                 .HasIndex(i => i.BestGuess)
                 .IsUnique(false);
+
+            modelBuilder.Entity<MediaFile>()
+                .Property(b => b.LocalMediaPath)
+                .HasMaxLength(1024);
+
+            modelBuilder.Entity<MediaFile>()
+                .Property(b => b.BestGuessMimeType)
+                .HasMaxLength(50);
         }
     }
 }

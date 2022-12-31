@@ -22,6 +22,13 @@ namespace MediaSchnaff.CLI
 
             var discovery = host.Services.GetRequiredService<IDiscovery>();
 
+            //if (Debugger.IsAttached)
+            //{
+            //    //discovery.GetFileInfo(@"V:\Upload\Alex-iPhone\2020\10\2020-10-03_12-24-14_IMG_2187.MOV");
+            //    discovery.TranscodeToH264Mp4(@"V:\Upload\Diskstation-Bis-2020\2003\2003_04_13 - BBM, Othello, Panorama\MVI_0024.avi", "c:\\temp\\xxx.mp4");
+            //    return;
+            //}
+
             discovery.Scan(@"V:\Upload", true, token);
         }
 

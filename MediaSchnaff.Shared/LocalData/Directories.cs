@@ -1,10 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Extensions.Options;
 
 namespace MediaSchnaff.Shared.LocalData
 {
@@ -13,6 +7,8 @@ namespace MediaSchnaff.Shared.LocalData
         string StorageDir { get; }
         string LogFile {  get; }
         string ThumbnailDir { get; }
+        string MediaDirAbs { get; }
+        string WWWRootAbs { get; }
     }
 
     public class Directories : IDirectories
@@ -24,6 +20,10 @@ namespace MediaSchnaff.Shared.LocalData
             this.Settings = settings;
             if (Settings?.Value?.ThumbnailDir == null)
                 throw new Exception("No ThumbnailDir configured in application settings");
+            if (Settings?.Value?.WWWRoot == null)
+                throw new Exception("No WWWRoot configured in application settings");
+            if (Settings?.Value?.MediaDirRel == null)
+                throw new Exception("No MediaDirRel configured in application settings");
         }
 
         public string StorageDir
@@ -46,6 +46,32 @@ namespace MediaSchnaff.Shared.LocalData
             get
             {
                 var dir = Settings.Value.ThumbnailDir!;
+
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                return dir;
+            }
+        }
+
+        public string WWWRootAbs
+        {
+            get
+            {
+                var dir = Settings.Value.WWWRoot!;
+
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                return dir;
+            }
+        }
+
+        public string MediaDirAbs
+        {
+            get
+            {
+                var dir = Path.Combine(Settings.Value.WWWRoot!, Settings.Value.MediaDirRel !);
 
                 if (!Directory.Exists(dir))
                     Directory.CreateDirectory(dir);

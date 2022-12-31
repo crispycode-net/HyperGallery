@@ -39,8 +39,20 @@ namespace MediaSchnaff.Shared.DBModels
         public short BestGuessYear { get; set; }
         public byte BestGuessMonth { get; set; }
         public string BestGuessSource { get; set; }
+        public string LocalMediaPath { get; set; }
+        public string BestGuessMimeType { get; set; }
 
         public string GetThumbnailFilename()
+        {
+            return $"{BestGuess.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}_{ThumbGuid}.jpg";
+        }
+
+        public string GetMediaFilename_MP4()
+        {
+            return $"{BestGuess.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}_{ThumbGuid}.mp4";
+        }
+
+        public string GetMediaFilename_Photo()
         {
             return $"{BestGuess.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)}_{ThumbGuid}.jpg";
         }

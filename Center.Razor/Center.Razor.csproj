@@ -14,4 +14,8 @@
     <ProjectReference Include="..\MediaSchnaff.Shared\MediaSchnaff.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="wwwroot\Media\" />
+  </ItemGroup>
+
 </Project>

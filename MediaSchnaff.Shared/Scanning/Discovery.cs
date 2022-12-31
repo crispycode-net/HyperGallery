@@ -1,4 +1,5 @@
-﻿using MediaSchnaff.Shared.DBAccess;
+﻿using HeyRed.Mime;
+using MediaSchnaff.Shared.DBAccess;
 using MediaSchnaff.Shared.DBModels;
 using MediaSchnaff.Shared.LocalData;
 using MetadataExtractor;
@@ -10,15 +11,23 @@ using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Processing;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Xml.Xsl;
 using Xabe.FFmpeg;
 using Xabe.FFmpeg.Downloader;
+using static MediaSchnaff.Shared.Scanning.Discovery;
 
 namespace MediaSchnaff.Shared.Scanning
 {
     public interface IDiscovery
     {
+        MediaFileOrError GetFileInfo(string path);
         void Scan(string startDirectory, bool scanRecursively, CancellationToken ct);
+        string TranscodeToH264Mp4(string sourceFile, string targetFile);
     }
 
     public class Discovery : IDiscovery
@@ -37,6 +46,9 @@ namespace MediaSchnaff.Shared.Scanning
         /// Bei 3 Reihen und 4 Spalten hat jedes Thumbnail einen Rahmen von 640 x 430
         /// </summary>
         public static Size FixedThumbnailFrameSize = new Size(640, 430);
+
+        public static Size FixedMediaFrameSize = new Size(2560, 1440);
+
         private readonly string exePath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "Where am I?";
 
         public Discovery(ILogger<Discovery> logger, MainContext mainContext, IDirectories directories)
@@ -83,34 +95,30 @@ namespace MediaSchnaff.Shared.Scanning
                     if (ignoreExtensions.Contains(mfFileExt))
                         continue;
 
+                    var newFile = GetFileInfo(source, mfFileExt);
+                    if (newFile.Error == null && newFile.File == null)
+                        throw new Exception($"Non deterministic! File {source} slipped");
 
-                    // if (mfFileExt == ".mov" || mfFileExt == ".avi" || mfFileExt == ".mp4" || mfFileExt == ".mpg" || mfFileExt == ".3gp" || mfFileExt == ".m4v")
+
+                    if (newFile.File != null)
                     {
-                        var newFile = GetFileInfo(source, mfFileExt);
-                        if (newFile.Error == null && newFile.File == null)
-                            throw new Exception($"Non deterministic! File {source} slipped");
-
-
-                        if (newFile.File != null)
+                        // Wir haben die meta infos. Wenns jetzt noch ein Thumbnail gibt, ist alles gut
+                        var error = CreateThumbnailAndMedia(newFile.File);
+                        if (error == null)
                         {
-                            // Wir habe die meta infos. Wenns jetzt noch ein Thumbnail gibt, ist alles gut
-                            var error = CreateThumbnail(newFile.File);
-                            if (error == null)
-                            {
-                                mainContext.Files?.Add(newFile.File);
-                            }
-                            else
-                            {
-                                mainContext.ScanErrors?.Add(new ScanError(error, source));
-                            }
+                            mainContext.Files?.Add(newFile.File);
                         }
-                        else if (newFile.Error != null)
+                        else
                         {
-                            mainContext.ScanErrors?.Add(new ScanError(newFile.Error, source));
+                            mainContext.ScanErrors?.Add(new ScanError(error, source));
                         }
-
-                        mainContext.SaveChanges();
                     }
+                    else if (newFile.Error != null)
+                    {
+                        mainContext.ScanErrors?.Add(new ScanError(newFile.Error, source));
+                    }
+
+                    mainContext.SaveChanges();
                 }
                 
                 logger.LogInformation($"Total files in directory {startDirectory}: {allFiles.Length}");
@@ -121,7 +129,7 @@ namespace MediaSchnaff.Shared.Scanning
             }
         }
 
-        private string? CreateThumbnail(MediaFile mf)
+        private string? CreateThumbnailAndMedia(MediaFile mf)
         {
             try
             {
@@ -145,6 +153,48 @@ namespace MediaSchnaff.Shared.Scanning
                 image.Mutate(x => x.Resize(CalculateAspectRatioFit(image.Size(), FixedThumbnailFrameSize)));
                 image.SaveAsJpeg(output, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder());
 
+                //
+                // Vom Original wird eine Kopie im Media Verzeichnis abgelegt
+                // Bei Videos geht es nicht ohne diesen Schritt, da der Browser viele Formate nicht unterstützt
+                // Also transcodierung nach H.264/mp4
+                // Bei Bilder nutzen wir den Umstand um eine auf UHD@150% = 2560x1440
+                //
+
+
+                var mediaDir = Path.Combine(directories.MediaDirAbs, mf.BestGuessYear.ToString());
+                if (!System.IO.Directory.Exists(mediaDir))
+                    System.IO.Directory.CreateDirectory(mediaDir);
+
+                if (mf.Kind == "video")
+                {
+                    var target = Path.Combine(mediaDir, mf.GetMediaFilename_MP4());
+
+                    if (Path.GetExtension(mf.SourcePath) == ".mp4")
+                    {
+                        File.Copy(mf.SourcePath, target, true);
+                    }
+                    else
+                    {                        
+                        var error = TranscodeToH264Mp4(mf.SourcePath, target);
+                        if (error != null)
+                            return error;
+                    }
+
+                    mf.LocalMediaPath = target.Replace(directories.WWWRootAbs, "").Trim('\\').Replace("\\", "/");
+                    mf.BestGuessMimeType = Discovery.GuessMimeType(target);
+                }
+                else
+                {
+                    var target = Path.Combine(mediaDir, mf.GetMediaFilename_Photo());
+                    var localImage = Image.Load(File.ReadAllBytes(originalImagePath), out format);
+                    localImage.Mutate(x => x.Resize(CalculateAspectRatioFit(localImage.Size(), FixedMediaFrameSize)));
+                    localImage.SaveAsJpeg(target, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder());
+
+                    mf.LocalMediaPath = target.Replace(directories.WWWRootAbs, "").Trim('\\').Replace("\\", "/");
+                    mf.BestGuessMimeType = Discovery.GuessMimeType(target);
+                }
+                
+
                 return null;
             }
             catch (Exception ex)
@@ -154,17 +204,88 @@ namespace MediaSchnaff.Shared.Scanning
             }
         }
 
-        //private static Size SizeToHeight(Size image, int fixedHeight)
-        //{
-        //    var scaleFactor = (double)fixedHeight / (double)image.Height;            
-        //    Size result = new Size((int)(image.Width * scaleFactor), fixedHeight);
-        //    return result;
-        //}
+        public string TranscodeToH264Mp4(string sourceFile, string targetFile)
+        {
+            using (Process process = new Process())
+            {
+                process.StartInfo.FileName = Path.Combine(exePath, "ffmpeg.exe");
+
+                if (!File.Exists(process.StartInfo.FileName))
+                {
+                    logger.LogWarning($"FFMpeg not found in {process.StartInfo.FileName}, will try to auto download...");
+
+                    FFmpeg.SetExecutablesPath(exePath);
+                    FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official).GetAwaiter().GetResult();
+
+                    logger.LogInformation($"...done");
+                }
+
+                process.StartInfo.Arguments = $"-i \"{sourceFile}\" -y -vcodec libx264 -f mp4 \"{targetFile}\"";
+
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = true;
+
+                StringBuilder output = new StringBuilder();
+                StringBuilder error = new StringBuilder();
+
+                using (AutoResetEvent outputWaitHandle = new AutoResetEvent(false))
+                using (AutoResetEvent errorWaitHandle = new AutoResetEvent(false))
+                {
+                    process.OutputDataReceived += (sender, e) => {
+                        if (e.Data == null)
+                        {
+                            outputWaitHandle.Set();
+                        }
+                        else
+                        {
+                            output.AppendLine(e.Data);
+                        }
+                    };
+                    process.ErrorDataReceived += (sender, e) =>
+                    {
+                        if (e.Data == null)
+                        {
+                            errorWaitHandle.Set();
+                        }
+                        else
+                        {
+                            error.AppendLine(e.Data);
+                        }
+                    };
+
+                    process.Start();
+
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                    process.WaitForExit();
+                    if (outputWaitHandle.WaitOne() && errorWaitHandle.WaitOne())
+                    {
+                        // Process completed. Check process.ExitCode here.
+                        if (process.ExitCode != 0)
+                            return $"Fehler beim transcodieren: (timeout)";
+                    }
+                    else
+                    {
+                        return $"Fehler beim transcodieren: {error})";
+                    }
+                }
+            }
+
+            return null;
+        }
 
         private static Size CalculateAspectRatioFit(Size srcSize, Size maxSize)
         {
             var ratio = Math.Min((double)maxSize.Width / (double)srcSize.Width, (double)maxSize.Height / (double)srcSize.Height);
+            if (ratio > 1) ratio= 1;
             return new Size((int)(srcSize.Width * ratio), (int)(srcSize.Height * ratio));
+        }
+
+        public MediaFileOrError GetFileInfo(string path)
+        {
+            var mfFileExt = Path.GetExtension(path).ToLower();
+            return GetFileInfo(path, mfFileExt);
         }
 
         private MediaFileOrError GetFileInfo(string path, string mfFileExt)
@@ -257,23 +378,12 @@ namespace MediaSchnaff.Shared.Scanning
                         output = output + err;
 
                         string[] lines = output.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
-                        foreach (var line in lines)
+
+                        var dates = GetAllDatesFromFFMpegInfo(output);
+                        if (dates.Any())
                         {
-                            if (line.Trim().StartsWith("creation_time"))
-                            {
-                                string dateString = line.Substring(line.IndexOf(":") + 2);
-
-                                DateTime crTime;
-                                bool success = DateTime.TryParseExact(dateString, "yyyy-MM-dd hh:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out crTime);
-                                if (!success)
-                                    success = DateTime.TryParse(dateString, null, DateTimeStyles.RoundtripKind, out crTime);
-
-                                if (success && crTime >= PlausibMinDate && crTime <= DateTime.Now)
-                                {
-                                    var mfDateTimeOriginal = crTime;
-                                    return new MediaFileOrError(new MediaFile(path, true, mfDateTimeOriginal, "FFmpeg meta data creation_time"), null);
-                                }
-                            }
+                            var oldest = dates.Min(d => d);
+                            return new MediaFileOrError(new MediaFile(path, true, oldest, "FFmpeg meta data"), null);
                         }
 
                         return new MediaFileOrError(new MediaFile(path, true, mfMinFileDate, "Min. File date"), null);
@@ -291,11 +401,46 @@ namespace MediaSchnaff.Shared.Scanning
             }
         }
 
+        private List<DateTime> GetAllDatesFromFFMpegInfo(string output)
+        {
+            var zuluDates = Regex.Matches(output, @"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]*Z");
+            var offsetDates = Regex.Matches(output, @"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[+][0-9]*");
+
+            List<DateTime> dates = new List<DateTime>();
+            foreach (Match zuluMatch in zuluDates)
+            {
+                if (DateTime.TryParse(zuluMatch.Value, out DateTime parsedDate))
+                {
+                    if (parsedDate >= PlausibMinDate && parsedDate <= DateTime.Now)
+                        dates.Add(parsedDate);
+                }
+                else
+                    throw new Exception("Can't parse date from FFMpeg output: " + zuluMatch.Value);
+            }
+            foreach (Match offsetMatch in offsetDates)
+            {
+                if (DateTime.TryParse(offsetMatch.Value, out DateTime parsedDate))
+                {
+                    if (parsedDate >= PlausibMinDate && parsedDate <= DateTime.Now)
+                        dates.Add(parsedDate);
+                }
+                else
+                    throw new Exception("Can't parse date from FFMpeg output: " + offsetMatch.Value);
+            }
+
+            return dates;
+        }
+
+        public static string GuessMimeType(string file)
+        {
+            return MimeGuesser.GuessMimeType(file);
+        }
+
         private static bool IsViedeo(string mfFileExt)
         {
             return mfFileExt == ".mov" || mfFileExt == ".avi" || mfFileExt == ".mp4" || mfFileExt == ".mpg" || mfFileExt == ".3gp" || mfFileExt == ".m4v" || mfFileExt == ".mp4";
         }
 
-        private record MediaFileOrError(MediaFile? File, string? Error);
+        public record MediaFileOrError(MediaFile? File, string? Error);
     }
 }

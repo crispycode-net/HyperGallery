@@ -4,6 +4,7 @@ using MediaSchnaff.Shared.DBAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MediaSchnaff.Shared.Migrations
 {
     [DbContext(typeof(MainContext))]
-    partial class MainContextModelSnapshot : ModelSnapshot
+    [Migration("20221231140624_OfflineDir")]
+    partial class OfflineDir
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -32,11 +34,6 @@ namespace MediaSchnaff.Shared.Migrations
 
                     b.Property<DateTime>("BestGuess")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("BestGuessMimeType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
 
                     b.Property<byte>("BestGuessMonth")
                         .HasColumnType("tinyint");

@@ -1,5 +1,6 @@
 using MediaSchnaff.Shared.DBAccess;
 using MediaSchnaff.Shared.LocalData;
+using MediaSchnaff.Shared.Scanning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using System.IO;
@@ -50,24 +51,39 @@ namespace Center.Razor
                 return Results.Ok(files);
             });
 
-            app.MapGet("/api/Video/{id}", (int id, MainContext db) =>
+            app.MapGet("/api/Video/{id}", (int id, MainContext db, IWebHostEnvironment env) =>
             {
                 var file = db.Files!.Find(id);
-                if (file == null || !File.Exists(file.SourcePath))
+                if (file == null)
                     return Results.NotFound();
 
-                var filestream = File.OpenRead(file.SourcePath);
-                return Results.File(filestream, contentType: "video/mp4", fileDownloadName: Path.GetFileName(file.SourcePath), enableRangeProcessing: true);
+                var source = Path.Combine(env.ContentRootPath, file.LocalMediaPath);
+                if (!File.Exists(source))
+                    return Results.NotFound();
+
+                var mimeGuess = file.BestGuessMimeType;
+                if (string.IsNullOrEmpty(mimeGuess))
+                    mimeGuess = "video/mp4";
+
+                var filestream = File.OpenRead(source);
+                return Results.File(filestream, contentType: mimeGuess, fileDownloadName: Path.GetFileName(source), enableRangeProcessing: true);
             });
 
-            app.MapGet("/api/Photo/{id}", (int id, MainContext db) =>
+            app.MapGet("/api/Photo/{id}", (int id, MainContext db, IWebHostEnvironment env) =>
             {
                 var file = db.Files!.Find(id);
-                if (file == null || !File.Exists(file.SourcePath))
+                if (file == null)
                     return Results.NotFound();
 
-                var filestream = File.OpenRead(file.SourcePath);
-                return Results.File(filestream, contentType: "image/jpg", fileDownloadName: Path.GetFileName(file.SourcePath));
+                var source = Path.Combine(env.ContentRootPath, file.LocalMediaPath);
+                if (!File.Exists(source))
+                    return Results.NotFound();
+
+                var mimeGuess = file.BestGuessMimeType;
+                if (string.IsNullOrEmpty(mimeGuess))
+                    mimeGuess = "image/jpeg";
+                var filestream = File.OpenRead(source);
+                return Results.File(filestream, contentType: mimeGuess, fileDownloadName: Path.GetFileName(source));
             });
 
             app.Run();
