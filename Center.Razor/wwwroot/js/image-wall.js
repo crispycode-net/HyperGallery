@@ -38,7 +38,7 @@
                 let rect = { x: c * this.columnWidth, y: r * this.rowHeight, w: this.columnWidth, h: this.rowHeight };
                 let mediaItem = this.createMediaItem(dataIndex, rect, c, r);
                 this.loadedMediaItems.push(mediaItem);
-                this.displayElement.append(mediaItem.img);
+                this.displayElement.append(mediaItem.previewElement);
             }
         }
 
@@ -86,25 +86,32 @@
         let mediaItem = {
             dataIndex: dataIndex,
             rect: rect,
-            img: document.createElement('img'),
+            previewElement: document.createElement('div'),
             gridColumnIndex: gridColumnIndex,
             gridRowIndex: gridRowIndex,
             kind: this.currentYearItems[dataIndex].kind,
             id: this.currentYearItems[dataIndex].id
         };
 
-        mediaItem.img.id = "mi_" + dataIndex;
-        mediaItem.img.src = this.currentYearItems[dataIndex].path;
-        mediaItem.img.style.position = "absolute";
-        mediaItem.img.style.left = rect.x + "px";
-        mediaItem.img.style.top = rect.y + "px";
-        mediaItem.img.style.width = rect.w + "px";
-        mediaItem.img.style.height = rect.h + "px";
-        mediaItem.img.style.objectFit = "cover";
-        mediaItem.img.mediaItem = mediaItem;
+        mediaItem.previewElement.id = "mi_" + dataIndex;        
+        mediaItem.previewElement.style.position = "absolute";
+        mediaItem.previewElement.style.left = rect.x + "px";
+        mediaItem.previewElement.style.top = rect.y + "px";
+        mediaItem.previewElement.style.width = rect.w + "px";
+        mediaItem.previewElement.style.height = rect.h + "px";                
+
+        const img = mediaItem.previewElement.appendChild(document.createElement("img"));
+        img.src = this.currentYearItems[dataIndex].path;
+        img.style.objectFit = "cover";
+        img.style.width = "100%";
+        img.style.height = "100%";
 
         if (mediaItem.kind === "video") {
-            mediaItem.img.style.border = "1px solid white";
+            const videoIcon = mediaItem.previewElement.appendChild(document.createElement("img"));
+            videoIcon.src = "img/icons8-next-96.png"; 
+            videoIcon.style.position = "absolute";
+            videoIcon.style.right = "0px";
+            videoIcon.style.bottom = "0px";
         }
 
         return mediaItem;
@@ -112,9 +119,9 @@
 
     focusMediaItem(mediaItem) {
         if (this.focusedMediaItem != null)
-            this.focusedMediaItem.img.classList.remove("focused-media-item");
+            this.focusedMediaItem.previewElement.classList.remove("focused-media-item");
 
-        mediaItem.img.classList.add("focused-media-item");
+        mediaItem.previewElement.classList.add("focused-media-item");
         this.focusedMediaItem = mediaItem;
     }
 
@@ -196,19 +203,20 @@
             }
 
             if (mediaItem.gridColumnIndex < -1 || mediaItem.gridColumnIndex > this.visibleColumns) {
-                mediaItem.img.remove();
+                mediaItem.previewElement.remove();
             }
             else {
                 if (withAnimation) {
-                    mediaItem.img.addEventListener('animationend', this.moveAnimationCompleted.bind(this));
+                    mediaItem.previewElement.addEventListener('animationend', this.moveAnimationCompleted.bind(this));
+                    mediaItem.previewElement.newLeft = mediaItem.rect.x;
                     if (moveRight)
-                        mediaItem.img.style.animation = "shiftLeftDyn 0.15s 1";
+                        mediaItem.previewElement.style.animation = "shiftLeftDyn 0.15s 1";
                     else
-                        mediaItem.img.style.animation = "shiftRightDyn 0.15s 1";
+                        mediaItem.previewElement.style.animation = "shiftRightDyn 0.15s 1";
                     this.animationsPlaying++;
                 }
                 else {
-                    mediaItem.img.style.left = mediaItem.rect.x + "px";
+                    mediaItem.previewElement.style.left = mediaItem.rect.x + "px";
                 }
             }
         });
@@ -239,13 +247,12 @@
             let rect = { x: addToGridColumn * this.columnWidth, y: r * this.rowHeight, w: this.columnWidth, h: this.rowHeight };
             let mediaItem = this.createMediaItem(dataIndex, rect, addToGridColumn, r);
             this.loadedMediaItems.push(mediaItem);
-            this.displayElement.append(mediaItem.img);
+            this.displayElement.append(mediaItem.previewElement);
         }
     }
 
     moveAnimationCompleted(e) {
-        let mediaItem = e.srcElement.mediaItem;
-        mediaItem.img.style.left = mediaItem.rect.x + "px";
+        e.srcElement.style.left = e.srcElement.newLeft + "px";        
         e.srcElement.style.animation = null;
 
         this.animationsPlaying--;

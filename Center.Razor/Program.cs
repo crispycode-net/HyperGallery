@@ -57,7 +57,7 @@ namespace Center.Razor
                 if (file == null)
                     return Results.NotFound();
 
-                var source = Path.Combine(env.ContentRootPath, file.LocalMediaPath);
+                var source = Path.Combine(env.WebRootPath, file.LocalMediaPath);
                 if (!File.Exists(source))
                     return Results.NotFound();
 
@@ -75,7 +75,7 @@ namespace Center.Razor
                 if (file == null)
                     return Results.NotFound();
 
-                var source = Path.Combine(env.ContentRootPath, file.LocalMediaPath);
+                var source = Path.Combine(env.WebRootPath, file.LocalMediaPath);
                 if (!File.Exists(source))
                     return Results.NotFound();
 
