@@ -1,6 +1,6 @@
-using MediaSchnaff.Shared.DBAccess;
-using MediaSchnaff.Shared.LocalData;
-using MediaSchnaff.Shared.Scanning;
+using HyperGallery.Shared.DBAccess;
+using HyperGallery.Shared.LocalData;
+using HyperGallery.Shared.Scanning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using System.IO;

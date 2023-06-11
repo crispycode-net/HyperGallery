@@ -53,7 +53,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\MediaSchnaff.Shared\MediaSchnaff.Shared.csproj" />
+	  <ProjectReference Include="..\HyperGallery.Shared\HyperGallery.Shared.csproj" />
 	</ItemGroup>
 
 </Project>
