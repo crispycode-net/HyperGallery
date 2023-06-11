@@ -2,6 +2,8 @@
 
 HyperGallery is an open-source media center application designed to display a large number of image and video files at high speed. It's a work-in-progress project and not yet ready for production use.
 
+For more information about the project and its development, check out the [blog post](https://crispycode.net/hypergallery-speed-through-your-memories/).
+
 ## Project Description
 
 HyperGallery aims to provide a user-friendly interface for navigating through your media files. It's designed to be easily navigatable with a remote control. The application features a background service that continuously scans for new material in a list of source folders. The media files are then categorized by the year they were taken, allowing you to view your memories in a chronological order.
