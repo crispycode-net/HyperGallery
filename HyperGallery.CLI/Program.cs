@@ -13,16 +13,20 @@ namespace HyperGallery.CLI
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
             var host = AppStartup();
 
             var tokenSource = new CancellationTokenSource();
             var token = tokenSource.Token;
 
-            var discovery = host.Services.GetRequiredService<IDiscovery>();
+            //var discovery = host.Services.GetRequiredService<IDiscovery>();
+            //discovery.Scan(@"V:\Upload", true, token);
 
-            discovery.Scan(@"V:\Upload", true, token);
+            var master = host.Services.GetRequiredService<IScanMaster>();
+            await master.ScanAsync(token);
+
+            return 0;
         }
 
         static void BuildConfig(IConfigurationBuilder builder)
@@ -60,8 +64,16 @@ namespace HyperGallery.CLI
 
                     services.Configure<ApplicationSettings>(configRoot.GetSection("ApplicationSettings"));
                     services.AddTransient<IDirectories, Directories>();
-                    services.AddTransient<IDiscovery, Discovery>();
-                    services.AddDbContext<MainContext>();
+                    services.AddTransient<IDiscovery, Discovery>();                    
+
+                    services.AddDbContext<MainContext>(options => {
+                        var connStr = configRoot.GetConnectionString("HyperGalleryConnection");
+                        connStr = connStr.Replace("%CommonApplicationData%", Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData));
+                        options.UseSqlServer(connStr);
+                        
+                    }, ServiceLifetime.Transient);
+
+                    services.AddScoped<IScanMaster, ScanMaster>();
 
                 })
                 .UseSerilog() // Add Serilog

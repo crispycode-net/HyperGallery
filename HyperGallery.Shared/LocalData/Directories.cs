@@ -6,7 +6,7 @@ namespace HyperGallery.Shared.LocalData
     {
         string StorageDir { get; }
         string LogFile {  get; }
-        string ThumbnailDir { get; }
+        string ThumbnailDirAbs { get; }
         string MediaDirAbs { get; }
         string WWWRootAbs { get; }
     }
@@ -18,10 +18,10 @@ namespace HyperGallery.Shared.LocalData
         public Directories(IOptions<ApplicationSettings> settings)
         {
             this.Settings = settings;
-            if (Settings?.Value?.ThumbnailDir == null)
-                throw new Exception("No ThumbnailDir configured in application settings");
             if (Settings?.Value?.WWWRoot == null)
                 throw new Exception("No WWWRoot configured in application settings");
+            if (Settings?.Value?.ThumbnailDirRel == null)
+                throw new Exception("No ThumbnailDir configured in application settings");
             if (Settings?.Value?.MediaDirRel == null)
                 throw new Exception("No MediaDirRel configured in application settings");
         }
@@ -33,19 +33,6 @@ namespace HyperGallery.Shared.LocalData
                 var dir = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
                     "HyperGallery");
-
-                if (!Directory.Exists(dir))
-                    Directory.CreateDirectory(dir);
-
-                return dir;
-            }
-        }
-
-        public string ThumbnailDir
-        {
-            get
-            {
-                var dir = Settings.Value.ThumbnailDir!;
 
                 if (!Directory.Exists(dir))
                     Directory.CreateDirectory(dir);
@@ -67,11 +54,24 @@ namespace HyperGallery.Shared.LocalData
             }
         }
 
+        public string ThumbnailDirAbs
+        {
+            get
+            {
+                var dir = Path.Combine(Settings.Value.WWWRoot!, Settings.Value.ThumbnailDirRel!);
+
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                return dir;
+            }
+        }
+
         public string MediaDirAbs
         {
             get
             {
-                var dir = Path.Combine(Settings.Value.WWWRoot!, Settings.Value.MediaDirRel !);
+                var dir = Path.Combine(Settings.Value.WWWRoot!, Settings.Value.MediaDirRel!);
 
                 if (!Directory.Exists(dir))
                     Directory.CreateDirectory(dir);

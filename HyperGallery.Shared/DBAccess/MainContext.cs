@@ -1,17 +1,29 @@
 ﻿using HyperGallery.Shared.DBModels;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace HyperGallery.Shared.DBAccess
 {
     public class MainContext : DbContext
     {
+        public MainContext(DbContextOptions<MainContext> options) : base (options)
+        {                
+        }
+
         public DbSet<MediaFile>? Files { get; set; }
         public DbSet<ScanError>? ScanErrors { get; set; }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            optionsBuilder.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=MediaSchnaff;");
-        }
+        //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        //{
+        //    IConfigurationRoot configuration = new ConfigurationBuilder()
+        //       .SetBasePath(Directory.GetCurrentDirectory())
+        //       .AddJsonFile("appsettings.json")
+        //       .Build();
+        //    var connectionString = configuration.GetConnectionString("DbCoreConnectionString");
+        //    optionsBuilder.UseSqlServer(connectionString);
+
+        //    //optionsBuilder.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=MediaSchnaff;");
+        //}
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -129,7 +129,7 @@ namespace HyperGallery.Shared.Scanning
         {
             try
             {
-                var thumbDir = Path.Combine(directories.ThumbnailDir, mf.BestGuessYear.ToString());
+                var thumbDir = Path.Combine(directories.ThumbnailDirAbs, mf.BestGuessYear.ToString());
                 if (!System.IO.Directory.Exists(thumbDir))
                     System.IO.Directory.CreateDirectory(thumbDir);
                 var output = Path.Combine(thumbDir, mf.GetThumbnailFilename());
@@ -153,7 +153,7 @@ namespace HyperGallery.Shared.Scanning
                 // Vom Original wird eine Kopie im Media Verzeichnis abgelegt
                 // Bei Videos geht es nicht ohne diesen Schritt, da der Browser viele Formate nicht unterstützt
                 // Also transcodierung nach H.264/mp4
-                // Bei Bilder nutzen wir den Umstand um eine auf UHD@150% = 2560x1440
+                // Bei Bilder nutzen wir den Umstand um eine auf UHD@150% = 2560x1440 Kopie anzulegen
                 //
 
 
